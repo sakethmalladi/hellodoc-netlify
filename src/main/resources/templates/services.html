@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script>
+        // JavaScript to detect user's location
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function showPosition(position) {
+            document.getElementById("userLatitude").value = position.coords.latitude;
+            document.getElementById("userLongitude").value = position.coords.longitude;
+        }
+
+        function showError(error) {
+            alert("Error getting location: " + error.message);
+        }
+
+        // JavaScript to set current date in appointment form
+        function setCurrentDate() {
+            var today = new Date();
+            var day = ("0" + today.getDate()).slice(-2);
+            var month = ("0" + (today.getMonth() + 1)).slice(-2);
+            var year = today.getFullYear();
+            var formattedDate = year + "-" + month + "-" + day;
+            document.getElementById("appointmentDate").value = formattedDate;
+        }
+
+        // JavaScript to calculate the fee
+        function calculateFee() {
+            var duration = document.getElementById("appointmentDuration").value;
+            var feePer30Min = document.getElementById("feePer30Min").value;
+            var totalFee = (duration / 30) * feePer30Min;
+            document.getElementById("totalFee").innerText = "Total Fee: $" + totalFee.toFixed(2);
+        }
+
+        // Update feePer30Min and available time slots when a doctor is selected
+        function updateDoctorInfo() {
+            var select = document.getElementById("doctorId");
+            var feePer30Min = select.options[select.selectedIndex].getAttribute('data-fee');
+            var openingTime = select.options[select.selectedIndex].getAttribute('data-opening-time');
+            var closingTime = select.options[select.selectedIndex].getAttribute('data-closing-time');
+            var timeSelect = document.getElementById("appointmentTime");
+
+            document.getElementById("feePer30Min").value = feePer30Min;
+            calculateFee();
+
+            // Clear existing options
+            timeSelect.innerHTML = '';
+            
+            // Populate available time slots
+            populateTimeSlots(openingTime, closingTime);
+        }
+
+        function populateTimeSlots(openingTime, closingTime) {
+            var timeSelect = document.getElementById("appointmentTime");
+
+            var startTime = new Date(`1970-01-01T${openingTime}:00`);
+            var endTime = new Date(`1970-01-01T${closingTime}:00`);
+            var interval = 30; // Appointment duration
+
+            while (startTime <= endTime) {
+                var option = document.createElement("option");
+                option.value = startTime.toTimeString().slice(0, 5);
+                option.text = startTime.toTimeString().slice(0, 5);
+                timeSelect.add(option);
+
+                startTime.setMinutes(startTime.getMinutes() + interval);
+            }
+        }
+    </script>
+</head>
+<body onload="getUserLocation(); setCurrentDate();">
+    <header>
+        <h1>Our Services</h1>
+    </header>
+    <main>
+        <section>
+            <h2>Filter Doctors</h2>
+            <form th:action="@{/services}" method="get">
+                <label for="miles">Miles:</label>
+                <input type="number" id="miles" name="miles" value="10" min="1">
+
+                <label for="specialization">Specialization:</label>
+                <input type="text" id="specialization" name="specialization">
+
+                <input type="hidden" id="userLatitude" name="userLatitude">
+                <input type="hidden" id="userLongitude" name="userLongitude">
+
+                <button type="submit">Filter</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Available Doctors</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Specialization</th>
+                        <th>Location</th>
+                        <th>Opening Time</th>
+                        <th>Closing Time</th>
+                        <th>Fee per 30 min</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <th:block th:each="doctor : ${doctors}">
+                        <tr>
+                            <td th:text="${doctor.name}">Doctor Name</td>
+                            <td th:text="${doctor.specialization}">Doctor Specialization</td>
+                            <td th:text="${doctor.location}">Doctor Location</td>
+                            <td th:text="${doctor.openingTime}">Opening Time</td>
+                            <td th:text="${doctor.closingTime}">Closing Time</td>
+                            <td th:text="${doctor.feePer30Min}">Fee per 30 min</td>
+                        </tr>
+                    </th:block>
+                    <tr th:if="${#lists.isEmpty(doctors)}">
+                        <td colspan="6">No doctors available</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Book an Appointment</h2>
+            <form th:action="@{/book-appointment}" method="post">
+                <label for="doctorId">Doctor:</label>
+                <select id="doctorId" name="doctorId" required onchange="updateDoctorInfo()">
+                    <option value="">Select a Doctor</option>
+                    <th:block th:each="doctor : ${doctors}">
+                        <option th:value="${doctor.id}" th:text="${doctor.name + ' (' + doctor.specialization + ') - ' + doctor.location}"
+                                th:data-fee="${doctor.feePer30Min}"
+                                th:data-opening-time="${doctor.openingTime}"
+                                th:data-closing-time="${doctor.closingTime}"></option>
+                    </th:block>
+                </select>
+
+                <label for="appointmentDate">Date:</label>
+                <input type="date" id="appointmentDate" name="appointmentDate" required>
+
+                <label for="appointmentTime">Time:</label>
+                <select id="appointmentTime" name="appointmentTime" required>
+                    <!-- Options will be dynamically added by JavaScript -->
+                </select>
+
+                <label for="appointmentDuration">Duration (in minutes):</label>
+                <input type="number" id="appointmentDuration" name="appointmentDuration" value="30" min="30" step="30" oninput="calculateFee()">
+
+                <label for="patientName">Patient Name:</label>
+                <input type="text" id="patientName" name="patientName" required>
+
+                <label for="patientAge">Patient Age:</label>
+                <input type="number" id="patientAge" name="patientAge" required>
+
+                <label for="patientEmail">Patient Email:</label>
+                <input type="email" id="patientEmail" name="patientEmail" required>
+
+                <label for="patientPhone">Patient Phone:</label>
+                <input type="tel" id="patientPhone" name="patientPhone" required>
+
+                <label for="problemDescription">Problem Description:</label>
+                <textarea id="problemDescription" name="problemDescription" required></textarea>
+
+                <input type="hidden" id="feePer30Min" name="feePer30Min">
+                <p id="totalFee">Total Fee: $0.00</p>
+
+                <button type="submit">Book Appointment</button>
+            </form>
+        </section>
+
+        <!-- Display flash message -->
+        <section>
+            <div th:if="${message}" class="alert alert-success">
+                <p th:text="${message}"></p>
+            </div>
+        </section>
+        <section>
+            <h2>Ask a Question</h2>
+            <form th:action="@{/ask-question}" method="post">
+                <label for="question">Your Question:</label>
+                <textarea id="question" name="question" rows="4" required></textarea>
+                
+                <button type="submit">Submit Question</button>
+            </form>
+        
+            <!-- Display the answer from ChatGPT -->
+            <div th:if="${answer}">
+                <h3>Answer:</h3>
+                <p th:text="${answer}"></p>
+            </div>
+        </section>
+        <section>
+            <!-- Display error message if any -->
+            <div th:if="${error}" class="alert alert-danger">
+                <p th:text="${error}"></p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
