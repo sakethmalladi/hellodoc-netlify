@@ -1,30 +1,33 @@
 version: '3.8'
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: hellodoc_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: saketh123
-      MYSQL_DATABASE: hellodoc
-    ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: always
 
-  hellodoc:
-    build: . 
+services:
+  app:
+    build:
+      context: .  # Dockerfile is in the current directory
+      dockerfile: Dockerfile  # Ensure the Dockerfile is named 'Dockerfile'
+    container_name: hellodoc-app
     ports:
       - "10000:10000"
+    depends_on:
+      - mysql
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/hellodoc
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: saketh123
-      PORT: 10000
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: always
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: saketh123
+      MYSQL_DATABASE: hellodoc
+      MYSQL_USER: root
+      MYSQL_PASSWORD: saketh123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+    driver: local
