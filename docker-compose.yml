@@ -7,7 +7,7 @@ services:
       MYSQL_ROOT_PASSWORD: saketh123
       MYSQL_DATABASE: hellodoc
     ports:
-      - "3306"
+      - "3306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -18,11 +18,12 @@ services:
   hellodoc:
     build: . 
     ports:
-      - ${PORT}
+      - "10000:10000"
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/hellodoc
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: saketh123
+      PORT: 10000
     depends_on:
       mysql:
         condition: service_healthy
